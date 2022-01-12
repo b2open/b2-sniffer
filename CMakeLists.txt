@@ -3,8 +3,13 @@ cmake_minimum_required(VERSION 3.16)
 # Set the project name
 project (b2-sniffer)
 
-# Set the C++ standard C++11
-set(CMAKE_CXX_STANDARD 11)
+# Set the C++ standard C++14
+set(CMAKE_CXX_STANDARD 14)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+
+# Enable clang-tidy
+# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
 
 # Lib PCAP
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}" ${CMAKE_MODULE_PATH})
@@ -22,13 +27,13 @@ endif()
 add_subdirectory(3rdparty/fmt)
 
 # Add an executable
-add_executable(b2-sniffer main.cpp)
+add_executable(b2-sniffer main.cpp b2sniffer.cpp)
 
 # Set the C++ standard to the appropriate standard for using auto
 target_compile_features(b2-sniffer PUBLIC cxx_auto_type)
 
 # Link Libraries
-target_link_libraries(b2-sniffer ${PCAP_LIBRARIES} fmt::fmt)
+target_link_libraries(b2-sniffer PRIVATE ${PCAP_LIBRARIES} cap fmt::fmt) 
 
 # Print Compile Features
 message("List of compile features: ${CMAKE_CXX_COMPILE_FEATURES}")
