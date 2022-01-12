@@ -27,10 +27,14 @@ VARIABLES
 
 ## Tests
    * Server
-    $ python3 tests/serverTCP.py
+```bash
+$ python3 tests/serverTCP.py
+```
 
    * Client
-    $ bash tests/clientTCP.sh
+```bash
+$ bash tests/clientTCP.sh
+```
 
 
 ## Printscreen
