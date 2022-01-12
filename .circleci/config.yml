@@ -27,7 +27,7 @@ jobs:
           name: Setup cmake and build
           command: |
             cd build
-            cmake /..
+            cmake ../
             cmake --build . --config Release
 
 workflows:
