@@ -1,0 +1,37 @@
+version: 2.1
+
+jobs:
+  build:
+    machine:
+      image: ubuntu-2004:202010-01
+    environment:
+      CC: gcc-9
+      CXX: g++-9
+    steps:
+      - checkout
+      - run:
+          name: Install Dependency Software
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y software-properties-common apt-transport-https
+            sudo apt-get install -y libcap-dev libpcap-dev git unzip cmake g++-9 libstdc++-9-dev
+      - run:
+          name: Git submodules Sync
+          command: |
+            git submodule update --init --recursive
+      - run:
+          name: Create build directories
+          command: |
+            mkdir -p build
+      - run:
+          name: Setup cmake and build
+          command: |
+            cd build
+            cmake ../
+            cmake --build . --config Release
+
+workflows:
+  version: 2
+  run-all:
+    jobs:
+      - build
