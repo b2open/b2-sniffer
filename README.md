@@ -1,4 +1,7 @@
 # b2-sniffer
+
+[![CircleCI](https://circleci.com/gh/b2open/b2-sniffer/tree/main.svg?style=svg)](https://circleci.com/gh/b2open/b2-sniffer/tree/main)
+
 Simple sniffer in C++ with libpcap para capturar/capturar e salvar pcap file.
 Use wireshark to view the generated .pcap files.
 
