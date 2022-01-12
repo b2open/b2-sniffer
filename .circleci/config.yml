@@ -11,11 +11,11 @@ jobs:
       - checkout
       - run:
         name: Install Dependency Software
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y software-properties-common apt-transport-https
-            sudo apt-get update
-            sudo apt-get install -y libcap-dev libpcap-dev git unzip cmake g++-9 libstdc++-9-dev
+        command: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common apt-transport-https
+          sudo apt-get update
+          sudo apt-get install -y libcap-dev libpcap-dev git unzip cmake g++-9 libstdc++-9-dev
       - run:
           name: Git submodules Sync
           command: |
