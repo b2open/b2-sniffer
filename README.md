@@ -25,6 +25,14 @@ VARIABLES
   FILTER_EXP              use this environment variable to use the --filter option
 ```
 
+## Tests
+   * Server
+    $ python3 tests/serverTCP.py
+
+   * Client
+    $ bash tests/clientTCP.sh
+
+
 ## Printscreen
 ![picture](https://raw.githubusercontent.com/b2open/b2-sniffer/main/images/img1.png)
 
