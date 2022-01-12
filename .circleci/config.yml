@@ -10,20 +10,19 @@ jobs:
     steps:
       - checkout
       - run:
-        name: Install Dependency Software
-        command: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common apt-transport-https
-          sudo apt-get update
-          sudo apt-get install -y libcap-dev libpcap-dev git unzip cmake g++-9 libstdc++-9-dev
+          name: Install Dependency Software
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y software-properties-common apt-transport-https
+            sudo apt-get install -y libcap-dev libpcap-dev git unzip cmake g++-9 libstdc++-9-dev
       - run:
           name: Git submodules Sync
           command: |
-             git submodule update --init --recursive
+            git submodule update --init --recursive
       - run:
           name: Create build directories
           command: |
-             mkdir -p build
+            mkdir -p build
       - run:
           name: Setup cmake and build
           command: |
