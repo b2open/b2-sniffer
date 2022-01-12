@@ -14,21 +14,10 @@
  * limitations under the License.
  */
 
-#include <cstring>
-#include <cstdlib>
-#include <ctime>
+#include <csignal>
 #include <iostream>
-
-#include <pcap.h>
-
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <net/ethernet.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/udp.h>
-#include <netinet/tcp.h>
-#include <netinet/ip.h>
-#include <unistd.h>
+#include <getopt.h>
+#include <locale.h>
 
 #include <fmt/core.h>
 #include <fmt/color.h>
@@ -36,143 +25,186 @@
 #include <fmt/format.h>
 #include <fmt/printf.h>
 
+#include "b2sniffer.h"
+
+/* --- Global variables --- */
 #define PROC_NAME "b2-sniffer"
 #define PROC_VERSION "1.0"
 
-static void processPacket(u_char *args, const struct pcap_pkthdr *header, const u_char *buffer)
-{	
-	int size = header->len;
-
-	//
-	// TODO: Get TCP Packet Header
-	//
-	struct iphdr *iph = (struct iphdr *)(buffer + sizeof(struct ethhdr));
-	
-	fmt::print(stdout, "-------------------------\n");
-	
-	//
-	// Selecting the correct protocol for analysis
-	//
-	switch (iph->protocol)
+/* --- Static Methods --- */
+std::function<void(int)> callback_wrapper = nullptr;
+static void signalHandler(int signo)
+{
+	switch (signo)
 	{
-	// ICMP Protocol
-	case 1:
-		fmt::print(stdout, "  -> Packet ICMP\n");
+	case SIGINT:
+		fmt::print(stderr, fmt::emphasis::bold, "\nCaught signal SIGINT, shutting down...\n");
 		break;
 
-	// TCP Protocol
-	case 6:
-		fmt::print(stdout, "  -> Packet TCP\n");
+	case SIGTERM:
+		fmt::print(stderr, fg(fmt::color::red)|fmt::emphasis::bold, "\nCaught signal {}, shutting down...\n", signo);
 		break;
-
-	// UDP Protocol
-	case 17:
-		fmt::print(stdout, "  -> Packet UDP\n");
-		break;
-
-	// Other Protocols
 	default:
-		fmt::print(stdout, "  -> Other Protocol\n");
 		break;
-	}
-	fmt::print(stdout, "-------------------------\n");
+	}	
+	
+	callback_wrapper(signo);
 }
 
-int main()
+static void setupSignals(void)
 {
-	int promiscuous_mode = 1;
+	struct sigaction action;
+	sigset_t mask;
 
-	pcap_if_t *alldevsp, *device;
-	pcap_t *handler;
+	sigemptyset(&mask);
+	action.sa_handler = signalHandler;
+	action.sa_mask = mask;
+	action.sa_flags = 0;
+	sigaction(SIGTERM, &action, nullptr);
+	sigaction(SIGINT, &action, nullptr);
+}
 
-	struct bpf_program filter;
-	bpf_u_int32 subnet_mask, ip;
+static void version()
+{
+	fmt::print(stdout, "{}: {}", PROC_NAME, PROC_VERSION);
+}
 
-	char errbuf[PCAP_ERRBUF_SIZE], *devname, devs[100][100];
-	int count = 1, n;
+static void usage(char *prog)
+{
+	fmt::print(stderr,
+			   "Usage: {} [OPTIONS] \n"
+			   "\n"
+			   "OPTIONS\n"
+			   "  -f[ilter],--filter                         enable filter PCAP, export variable FILTER_EXP\n"
+			   "  -w[write-pcap],--write-pcap                create pcap file from capture\n"
+			   "  -v[erbose],--verbose                       enable mode verbose\n"
+			   "  -V[ersion],--version                       show program version\n"
+			   "  -h[elp],--help                             print help\n"
+			   "\n"
+			   "VARIABLES\n"
+			   "  FILTER_EXP              use this environment variable to use the --filter option\n"
+			   "\n",
+			   prog);
+}
 
-	fmt::print(stdout, "Name     : {}\n", PROC_NAME);
-	fmt::print(stdout, "Version  : {}\n", PROC_VERSION);
-	fmt::print(stdout, "PID:     : {}\n", getpid());
+int main(int argc, char *argv[])
+{
+	int opt, opt_write_pcap=0, opt_verbose=0;
+	const char *filter_exp_env = nullptr;
+
+	static const struct option long_options[] = {
+		{"version", 0, nullptr, 'V'},
+		{"verbose", 0, nullptr, 'v'},
+		{"write-pcap", 0, nullptr, 'w'},
+		{"help", 0, nullptr, 'h'},
+		{"filter", 0, nullptr, 'f'},
+		{nullptr, 0, nullptr, 0}};
+
+	//
+	// Set locale to use environment variables
+	//
+	setlocale(LC_ALL, "");
+
+	//
+	// Install Handler Signals
+	//
+	setupSignals();
+
+	//
+	// Parser Options
+	//
+	while ((opt = getopt_long(argc, argv, "fwvVh",
+							  long_options, nullptr)) != EOF)
+	{
+		switch (opt)
+		{
+		case 'v':
+			opt_verbose++;
+			break;
+
+		case 'V':
+			version();
+			std::exit(EXIT_SUCCESS);
+
+		case 'h':
+			usage(argv[0]);
+			std::exit(EXIT_SUCCESS);
+
+		case 'f':
+			filter_exp_env = getenv("FILTER_EXP");
+			if (filter_exp_env == nullptr)
+			{
+				// Set filter default 'src localhost'
+				// 	const char *filter_exp = static_cast<const char *>("src localhost and (src port 33000)");
+				filter_exp_env = static_cast<const char *>("src localhost");
+			}
+			break;
+
+		case 'w':
+			opt_write_pcap = 1;
+			break;
+
+		case '?':
+		default:
+			usage(argv[0]);
+			std::exit(EXIT_SUCCESS);
+		}
+	}
+
+	fmt::print(stdout, "Name        : {}\n", PROC_NAME);
+	fmt::print(stdout, "Version     : {}\n", PROC_VERSION);
+	fmt::print(stdout, "PID:        : {}\n", getpid());
+	fmt::print(stdout, "Verbose Mode: {}\n", opt_verbose>0?"ON":"OFF");
 
 	//
 	// Register Date Time Started Application
 	//
 	std::time_t dt = std::time(nullptr);
-	fmt::print(stdout, "Started  : {:%Y-%m-%d %H:%M:%S}\n", fmt::localtime(dt));
+	fmt::print(stdout, "Started     : {:%Y-%m-%d %H:%M:%S}\n", fmt::localtime(dt));
 
-	fmt::print(stdout, fmt::emphasis::bold, "\nFinding available devices ...\n");
-	if (pcap_findalldevs(&alldevsp, errbuf))
-	{
-		fmt::print(stderr, fg(fmt::color::red), "\nError finding devices : {}", errbuf);
-		exit(1);
-	}
+	//
+	// Instance Class Sniffer
+	//
+	std::shared_ptr<b2::Sniffer> sniffer = std::make_unique<b2::Sniffer>();
+	callback_wrapper = std::bind(&b2::Sniffer::catchSignal, sniffer, std::placeholders::_1);
 
-	fmt::print(stdout, fmt::emphasis::bold, "\nAvailable Devices:\n");
-	for (device = alldevsp; device != nullptr; device = device->next)
-	{
-		if (device->name != nullptr)
-		{
-			if (device->description != nullptr) {
-				fmt::print(stdout, "{}. {} - {}\n", count, device->name, device->description);
-			} else {
-				fmt::print(stdout, "{}. {}\n", count, device->name);
-			}
-			strcpy(devs[count], device->name);
-		}
-		count++;
-	}
-
-	fmt::print(stdout, "Enter the number of the device you want to sniff : ");
-	scanf("%d", &n);
-	devname = devs[n];
-
-	if (pcap_lookupnet(devname, &ip, &subnet_mask, errbuf) == -1)
-	{
-		fmt::print(stdout, "Could not get information for device: {}\n", devname);
-		ip = 0;
-		subnet_mask = 0;
+	//
+	// Check Capability System CAP_NET_RAW and CAP_NET_ADMIN
+	// 
+	auto cap_enable = b2::Sniffer::isCapability();
+	if (opt_verbose > 0) { fmt::print(stdout, "Capability: {}\n\n", cap_enable); }
+	if (!cap_enable) {
+		return EXIT_FAILURE;
 	}
 
 	//
-	// Filter Packt Cap
+	// Enable Verbose Mode?
 	//
-	char filter_exp[] = "src localhost and (src port 33000)";
-
-	//
-	// Open the device for sniffing
-	//
-	fmt::print(stdout, "Opening device {} for sniffing ...\n", devname);
-	handler = pcap_open_live(devname, 65536, promiscuous_mode, 0, errbuf);
-
-	if (handler == nullptr)
-	{
-		fmt::print(stderr, fg(fmt::color::red), "Couldn't open device {} : {}\n", devname, errbuf);
-		exit(1);
-	}	
-
-	//
-	// Compile Filter
-	//
-	if (pcap_compile(handler, &filter, filter_exp, 0, ip) == -1)
-	{
-		fmt::print(stderr, fg(fmt::color::red), "Bad filter - {}\n", pcap_geterr(handler));
-		return 2;
+	if (opt_verbose > 0) {
+		sniffer->enableVerbose(opt_verbose);
 	}
 
 	//
-	// Set Filter
+	// Write Pcap File?
 	//
-	if (pcap_setfilter(handler, &filter) == -1)
-	{
-		fmt::print(stderr, fg(fmt::color::red), "Error setting filter - %s\n", pcap_geterr(handler));
-		return 2;
+	if (opt_write_pcap) {
+		sniffer->enableWritePcapFile(true);
 	}
 
 	//
-	// Started mainloop
+	// List and selecting Interface to sniff
 	//
-	pcap_loop(handler, -1, processPacket, NULL);
+	sniffer->listInterfaces();
+	
+	//
+	// Apply filter and run
+	//
+	int ret;
+	ret = sniffer->run(filter_exp_env);
+	if (ret > 0)
+	{
+		fmt::print(stderr, fg(fmt::color::red) | fmt::emphasis::bold, "\nErr Sniffer Running ErroNo[{}]\n", ret);
+	}
 
-	return 0;
+	return EXIT_SUCCESS;
 }
