@@ -82,12 +82,12 @@ VARIABLES
 ## Tests
    * Server
 ```bash
-$ python3 tests/serverTCP.py
+$ python3 tools/serverTCP.py
 ```
 
    * Client
 ```bash
-$ bash tests/clientTCP.sh
+$ bash tools/clientTCP.sh
 ```
 
 
