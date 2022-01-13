@@ -95,6 +95,13 @@ $ bash tests/clientTCP.sh
 ![picture](https://raw.githubusercontent.com/b2open/b2-sniffer/main/images/img1.png)
 
 
+Roadmap
+-------
+    - Display during capture the eth header
+    - Display during capture the ip header
+    - Display during capture the tcp and udp header
+    - Display during captura the payload packet
+
 Contact
 -------
 You can contact me by email at cleitonrbueno@gmail.com.
