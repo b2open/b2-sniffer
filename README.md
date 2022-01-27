@@ -93,14 +93,12 @@ $ bash tools/clientTCP.sh
 
 ## Printscreen
 ![picture](https://raw.githubusercontent.com/b2open/b2-sniffer/main/images/img1.png)
+![picture](https://raw.githubusercontent.com/b2open/b2-sniffer/main/images/img2.png)
 
 
 Roadmap
 -------
-    - Display during capture the eth header
-    - Display during capture the ip header
-    - Display during capture the tcp and udp header
-    - Display during captura the payload packet
+
 
 Contact
 -------
