@@ -1,6 +1,7 @@
 #!/usr/bin/env python3 -u
 
 import json
+import hashlib
 import socket
 import sys
 import time
@@ -23,9 +24,10 @@ try:
             while True:
                 # Generate random numbers from 0 to 999
                 n =  random.randint(0,999)
+                payload = hashlib.md5(bytearray(n)).hexdigest()
 
                 # Create dict{}
-                payload = {"id": n}
+                payload = {"id": n, "hash": payload}
             
                 # Mount JSON             
                 data = json.dumps(payload)
@@ -38,7 +40,7 @@ try:
                 conn.sendall(bytes(data, encoding='utf-8'))
             
                 # Sleep 5s
-                time.sleep(.5)
+                time.sleep(.100)
 except KeyboardInterrupt:
     pass
 
