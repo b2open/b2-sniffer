@@ -57,7 +57,13 @@ namespace b2
         bool m_enable_write_pcap={false};
         int m_enable_verbose=0;
 
-        static void processPacket(u_char *user, const struct pcap_pkthdr *header, const u_char *buffer);        
+        static void processPacket(u_char *user, const struct pcap_pkthdr *header, const u_char *buffer);
+
+        void printEthernetHeader(const u_char *buffer, size_t size, const size_t counter_packet);
+        void printIPHeader(const u_char *buffer, int size);
+        void printTCPPacket(const u_char *buffer, int size);
+        void printUDPPacket(const u_char *buffer, size_t size);
+        void printDataPacket(const u_char *buffer, int size);
 
         void writeCaptureFile();
     };
